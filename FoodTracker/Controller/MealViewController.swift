@@ -21,7 +21,6 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
      This value is either passed by `MealTableViewController` in `prepare(for:sender:)`
      or constructed as part of adding a new meal.
      */
-    var indexPath: IndexPath!
     var food: Food?
     
     override func viewDidLoad() {
@@ -29,11 +28,12 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
         
         // Xử lý đầu vào nội dung trường văn bản của người dùng thông qua gọi lại delegate
         nameTextField.delegate = self
-        if indexPath != nil {
-            navigationItem.title = DataService.sharedInstance.mocMeals[indexPath.row].name
-            nameTextField.text = DataService.sharedInstance.mocMeals[indexPath.row].name
-            photoImageView.image = DataService.sharedInstance.mocMeals[indexPath.row].photo as? UIImage
-            ratingControl.rating = Int(DataService.sharedInstance.mocMeals[indexPath.row].rating)
+        if let food = food {
+            navigationItem.title = food.name
+            nameTextField.text = food.name
+            photoImageView.image = food.photo as? UIImage
+            ratingControl.rating = Int(food.rating)
+            
         }
         
         // Enable the Save button only if the text field has a valid Meal name.
@@ -83,8 +83,15 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
         navigationController?.popViewController(animated: true)
     }
     
-    
-    @IBAction func sendingData(_ sender: Any) {
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        super.prepare(for: segue, sender: sender)
+        
+        // Configure the destination view controller only when the save button is pressed.
+        guard let button = sender as? UIBarButtonItem, button === saveButton else {
+            os_log("The save button was not pressed, cancelling", log: OSLog.default, type: .debug)
+            return
+        }
+        
         guard let name = nameTextField.text  else {
             return
         }
@@ -92,6 +99,8 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
         
         let rating = ratingControl.rating
         
+        
+        // Set the meal to be passed to MealTableViewController after the unwind segue.
         if food == nil {
             food = Food(context: AppDelegate.context)
         }
@@ -100,12 +109,6 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
         food?.rating = Int16(Int(rating) )
         food?.photo = photo
         
-        if indexPath != nil {
-            DataService.sharedInstance.edit(at: indexPath.row, and: food!)
-        } else {
-            DataService.sharedInstance.addData(food: food!)
-        }
-        navigationController?.popViewController(animated: true)
     }
     
     @IBAction func selectImageFromPhotoLibrary(_ sender: UITapGestureRecognizer) {
@@ -133,3 +136,26 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
     
 }
 
+//    @IBAction func sendingData(_ sender: Any) {
+//        guard let name = nameTextField.text  else {
+//            return
+//        }
+//        guard let photo = photoImageView.image else {return}
+//
+//        let rating = ratingControl.rating
+//
+//        if food == nil {
+//            food = Food(context: AppDelegate.context)
+//        }
+//
+//        food?.name = name
+//        food?.rating = Int16(Int(rating) )
+//        food?.photo = photo
+//
+//        if food != nil {
+//            DataService.sharedInstance.edit(and: food!)
+//        } else {
+//            DataService.sharedInstance.addData(food: food!)
+//        }
+//        navigationController?.popViewController(animated: true)
+//    }

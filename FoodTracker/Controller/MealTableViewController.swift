@@ -13,13 +13,29 @@ import CoreData
 class MealTableViewController: UITableViewController {
     // MARK: Properties
     
-    
+    var meals = DataService.sharedInstance.mocMeals
+    var filteredMeals = [Food]()
+    let searchController = UISearchController(searchResultsController: nil)
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         // Use the edit button item provided by the table view controller.
         navigationItem.leftBarButtonItem = editButtonItem
+        
+        //Bằng việc gán protocol searchResultsUpdater, chúng ta có thể xác định mỗi khi ô text trong search bar được thay đổi.
+        searchController.searchResultsUpdater = self
+        // set là false để trong quá trình search, tableView của chúng ta không bị che khuất
+        searchController.dimsBackgroundDuringPresentation = false
+        // Ẩn/ hiện Navigation khi nút search active
+        searchController.hidesNavigationBarDuringPresentation = false
+        // true để search bar của chúng ta không bị lỗi layout khi sử dụng
+        definesPresentationContext = true
+        //hien thi
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.searchBar.placeholder = "Search Meal"
+        navigationItem.searchController = searchController
+        filteredMeals = meals
         
     }
     
@@ -42,7 +58,7 @@ class MealTableViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return DataService.sharedInstance.mocMeals.count
+        return filteredMeals.count
     }
     
     
@@ -54,7 +70,7 @@ class MealTableViewController: UITableViewController {
         }
         
         // Fetches the appropriate meal for the data source layout.
-        let meal = DataService.sharedInstance.mocMeals[indexPath.row]
+        let meal = filteredMeals[indexPath.row]
         
         cell.nameLabel.text = meal.name
         cell.photoImageView.image = meal.photo as? UIImage
@@ -73,25 +89,56 @@ class MealTableViewController: UITableViewController {
     
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        if let mealDetailViewController = segue.destination as? MealViewController {
-            if let selectedMeal = tableView.indexPathForSelectedRow {
-                mealDetailViewController.indexPath = selectedMeal
-                mealDetailViewController.food = DataService.sharedInstance.mocMeals[selectedMeal.row]
-            }
+        let mealViewController = segue.destination as? MealViewController
+        if let indexPath = tableView.indexPathForSelectedRow {
+            mealViewController?.food = filteredMeals[indexPath.row]
         }
     }
+    
+    @IBAction func unwindToMealList(sender: UIStoryboardSegue) {
+        if let sourceViewController = sender.source as? MealViewController, let meal = sourceViewController.food {
+            
+            if let selectedIndexPath = tableView.indexPathForSelectedRow {
+                if let index = meals.index(of: filteredMeals[selectedIndexPath.row]) {
+                    meals[index] = meal
+                    filteredMeals = meals
+                }
+            }
+            else {
+                // Add a new meal
+                meals.append(meal)
+                filteredMeals = meals
+            }
+            tableView.reloadData()
+            // Save the meals
+            DataService.sharedInstance.saveData()
+        }
+    }
+    
+    
     
     // Override to support editing the table view.
-    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            // Delete the row from the data source
-            DataService.sharedInstance.remove(at: indexPath)
+    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        switch editingStyle {
+        case .delete:
+            
+            let meal = filteredMeals[indexPath.row]
+            filteredMeals.remove(at: indexPath.row)
+            DataService.sharedInstance.remove(food: meal)
             tableView.deleteRows(at: [indexPath], with: .fade)
-        } else if editingStyle == .insert {
-            // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
+        default:
+            print("Something")
         }
+        tableView.reloadData()
     }
-    
-    
-    
+}
+
+extension MealTableViewController: UISearchResultsUpdating {
+    func updateSearchResults(for searchController: UISearchController) {
+        guard let searchText = searchController.searchBar.text else { return }
+        filteredMeals = searchText.isEmpty ? (meals) : (meals.filter({ (data) -> Bool in
+            return (data.name?.lowercased().contains(searchText.lowercased()))!
+        }))
+        tableView.reloadData()
+    }
 }

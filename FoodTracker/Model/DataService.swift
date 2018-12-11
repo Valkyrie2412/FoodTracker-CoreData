@@ -10,7 +10,14 @@ import UIKit
 import os.log
 import CoreData
 
-class DataService {
+class DataService: Equatable {
+    
+    static func == (lhs: DataService, rhs: DataService) -> Bool {
+        return lhs.mocMeals == rhs.mocMeals
+    }
+    
+    
+    
     static let sharedInstance: DataService = DataService()
     private var _mocMeals: [Food]?
     
@@ -37,23 +44,22 @@ class DataService {
     }
     
     
-    func addData(food: Food)  {
-        _mocMeals?.append(food)
-        saveData()
-    }
-    func edit(at index: Int, and food: Food) {
-        _mocMeals?[index] = food
+//    func addData(food: Food)  {
+//        _mocMeals?.append(food)
+//        saveData()
+//    }
+//    func edit(at index: Int, and food: Food) {
+//        _mocMeals?[index] = food
+//        saveData()
+//    }
+    
+    func remove(food: Food)  {
+        AppDelegate.context.delete(food)
+//        loadDataEntity()
         saveData()
     }
     
-    func remove(at indexPath: IndexPath)  {
-        guard let food = _mocMeals else { return}
-        AppDelegate.context.delete(food[indexPath.row])
-        loadDataEntity()
-        saveData()
-    }
-    
-    private func saveData()  {
+     func saveData()  {
         AppDelegate.saveContext()
     }
 }
